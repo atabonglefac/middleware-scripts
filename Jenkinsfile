@@ -1,29 +1,39 @@
 pipeline {
     agent any
-
-    stages {
-        stage('Hello') {
+ stages {
+  stage('Docker Build and Tag') {
+           steps {
+              
+                sh 'docker build -t atabonglefac:latest .' 
+                sh 'docker tag nginxtest atabonglefac/nginxtest:latest'
+                sh 'docker tag nginxtest atabonglefac/nginxtest:$BUILD_NUMBER'
+               
+          }
+        }
+     
+  stage('Publish image to Docker Hub') {
+          
             steps {
-                echo 'Hello '
-                sleep 5
+        withDockerRegistry([ credentialsId: "dockerHub", url: "" ]) {
+          sh  'docker push atabonglefac/nginxtest:latest'
+          sh  'docker push atabonglefac/nginxtest:$BUILD_NUMBER' 
+        }
+                  
+          }
+        }
+     
+      stage('Run Docker container on Jenkins Agent') {
+             
+            steps {
+                sh "docker run -d -p 4030:80 atabonglefac/nginxtest"
+ 
             }
         }
-             stage('build') {
+ stage('Run Docker container on remote hosts') {
+             
             steps {
-                echo 'build'
-                sleep 5
-            }
-        }
-             stage('test') {
-            steps {
-                echo 'test'
-                sleep 4
-            }
-        }
-             stage('deploy') {
-            steps {
-                echo 'deploy'
-                sleep 4
+                sh "docker -H ssh://jenkins@172.31.28.25 run -d -p 4001:80 atabonglefac/nginxtest"
+ 
             }
         }
     }
